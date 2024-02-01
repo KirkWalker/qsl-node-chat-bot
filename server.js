@@ -33,7 +33,7 @@ var contentTypesByExtension = {
   };
 
 const requestListener = function (req, res) {
-
+    console.log("req.url:",req.url);
     if(req){
         var url = req.url;
         if (url === "/")  url = '/index.html'
