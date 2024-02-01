@@ -1,0 +1,17 @@
+{
+  "name": "chatgptdemo",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kirk Walker",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "openai": "^4.26.0"
+  }
+}
