@@ -2,11 +2,29 @@ import http from 'http';
 import {promises as fs} from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, extname } from 'path';
+import { exec } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const host = '127.0.0.1';
+const host = 'localhost';
 const port = 8080;
+const os = process.platform;
+const startUrl = `http://${host}:${port}/index.html`
+
+let cmd;
+if (os === "win32") {
+// Windows
+cmd = `start ${startUrl}`;
+} else if (os === "darwin") {
+// Mac OS
+cmd = `open ${startUrl}`;
+} else if (os === "linux") {
+// Linux
+cmd = `xdg-open ${startUrl}`;
+} else {
+// Unsupported OS
+throw new Error("Unsupported operating system");
+}
 
 var contentTypesByExtension = {
     '.html': "text/html",
@@ -38,4 +56,5 @@ const requestListener = function (req, res) {
 const server = http.createServer(requestListener);
 server.listen(port, host, () => {
     console.log(`Server is running on http://${host}:${port}`);
+    exec(cmd);
 });
