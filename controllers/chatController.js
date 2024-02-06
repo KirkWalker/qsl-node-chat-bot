@@ -1,5 +1,24 @@
 import helper from '../middleware/helper.js';
 import OpenAI from '../middleware/openai.js';
+import { readFile } from 'fs/promises';
+
+const debug_level = 1
+
+const getStartingMessage = async (req,res) => {
+    const messages = JSON.parse(
+        await readFile(
+        new URL('../model/messages.json', import.meta.url)
+        )
+    );
+    
+    const data = {
+        messages,
+        setMessages: function (data) { this.messages = data }
+    };
+    return data.messages[0];
+}
+
+
 
 const getAllMessages = async (req,res) => {
     let final = [];
@@ -12,14 +31,20 @@ const getAllMessages = async (req,res) => {
             "id":message.id
         });   
     });
+
+    if(final.length <1) {
+        if(debug_level < 2) console.log("Starting new thread");
+        final.push(await getStartingMessage());
+    }
+   
     res.json(final)
 }
 
 const createNewMessage = async (req, res) => {
-    console.log("createNewMessage",req.body);
+    if(debug_level < 2) console.log("createNewMessage",req.body);
     try {
         const response = await OpenAI.agent(req.body.message,req.body.name);
-        console.log("createNewMessage response:",response);
+        if(debug_level < 2) console.log("createNewMessage response:",response);
         res.status(201).json({
             "role":"agent",
             "message":response[0].text.value});

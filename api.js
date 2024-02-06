@@ -8,13 +8,27 @@ const __dirname = dirname(__filename);
 
 import corsOptions from './config/corsOptions.js';
 import errorHandler from './middleware/errorHandler.js';
+import readline from "readline";
 
+//handle local promts
 import OpenAI from './middleware/openai.js';
+const userInterface = readline.createInterface({
+    input: process.stdin
+})
+
+userInterface.prompt()
+userInterface.on("line", async input => {
+    //console.log("input recieved");
+    const response = await OpenAI.agent(input,"SystemUser");
+    console.log(response[0].text.value);
+    userInterface.prompt();
+})
+
 
 //change this to update the name chatbot uses to address the user
 const sytem_user = "SystemUser";
 
-import readline from "readline";
+
 const PORT = process.env.PORT || 3500;
 
 //security middleware
@@ -52,15 +66,4 @@ app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 
 
-const userInterface = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-})
 
-userInterface.prompt()
-userInterface.on("line", async input => {
-    //console.log("input recieved");
-    const response = await OpenAI.agent(input,"SystemUser");
-    console.log("Agent response:", response);
-    userInterface.prompt();
-})

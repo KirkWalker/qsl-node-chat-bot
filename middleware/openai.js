@@ -1,12 +1,11 @@
 import { OpenAI }  from "openai";
 import { config } from "dotenv";
 import helper from './helper.js';
-import { readFile } from 'fs/promises';
 config();
 import {LocalStorage} from 'node-localstorage' 
 var localStorage = new LocalStorage('./session'); 
 
-//const PERSON_NAME = "BloodBag";
+const debug_level = 2
 
 const openai = new OpenAI({
     apiKey: process.env.API_KEY,
@@ -24,22 +23,23 @@ const availableTools = {
 };
 
 const assistant = await openai.beta.assistants.retrieve(process.env.ASSISTANT_ID);
-//console.log(assistant);
+if(debug_level < 1) console.log(assistant);
 
 async function getThread(){
     if(!localStorage.getItem('thread_id')){
         const thread = await openai.beta.threads.create();
         localStorage.setItem('thread_id', thread.id)
-        //console.log("thread created",thread.id);
+        if(debug_level < 2) console.log("thread created",thread.id);
+        return thread.id
     } else {
         const thread = await openai.beta.threads.retrieve(localStorage.getItem('thread_id'));
-        //console.log(thread);
-        console.log("thread loaded",thread.id);
+        if(debug_level < 2) console.log("thread loaded",thread.id);
+        return thread.id
     }
 }
 
-async function newRun(userName){
-    return await openai.beta.threads.runs.create(localStorage.getItem('thread_id'),
+async function newRun(userName,threadID){
+    return await openai.beta.threads.runs.create(threadID,
     {
         assistant_id: process.env.ASSISTANT_ID,
         instructions: "Please address the user as " + userName
@@ -49,48 +49,48 @@ async function newRun(userName){
 
 async function agent(userInput,userName) {
 
-    await getThread();
+    const threadID = await getThread();
+    let runID = localStorage.getItem('run_id');//temp until db added
 
-    if(!localStorage.getItem('run_id')){
-        const message = await openai.beta.threads.messages.create( localStorage.getItem('thread_id'), 
+    if(!runID){
+        const message = await openai.beta.threads.messages.create(threadID, 
         {
                 role:"user",
                 content:userInput
         });
     
-        const run = await newRun(userName);
-    
-        localStorage.setItem('run_id', run.id);
-        console.log("run created", run);
+        const run = await newRun(userName,threadID);
+        runID = run.id;
+        localStorage.setItem('run_id', runID);
+        if(debug_level < 2) console.log("run created", runID);
     }
 
     let tool_outputs = []
     let loading = true;
     try{
-        let run_status = await openai.beta.threads.runs.retrieve(localStorage.getItem('thread_id'),localStorage.getItem('run_id'))
+        let run_status = await openai.beta.threads.runs.retrieve(threadID,runID)
     } catch(err){
         //run might have failed, start a new one
-        const newrun = await newRun(userName);
-    
-        localStorage.setItem('run_id', newrun.id);
-        console.log("run created", newrun.id);
+        const newrun = await newRun(userName,threadID);
+        runID = newrun.id;
+        localStorage.setItem('run_id', runID);//temp until db added
+        if(debug_level < 2) console.log("newrun created", runID);
     }
     
 
     while(loading) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const run_status = await openai.beta.threads.runs.retrieve(localStorage.getItem('thread_id'),localStorage.getItem('run_id'));
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const run_status = await openai.beta.threads.runs.retrieve(threadID,runID);
         if(run_status.status === "completed"){
-            console.log("run loaded", run_status.id);
-            const mes = await openai.beta.threads.messages.list(localStorage.getItem('thread_id'))
-            localStorage.setItem('run_id', "");
+            if(debug_level > 2) console.log("run loaded", run_status.id);
+            const mes = await openai.beta.threads.messages.list(threadID)
+            localStorage.setItem('run_id', ""); //temp until db added
             return mes.body.data[0].content;
             loading = false;
         } else if(run_status.status === "requires_action"){
     
-            console.log("Function Calling: ",run_status.status);
+            if(debug_level < 1) console.log("Function Calling: ",run_status.status);
             const toolCalls = run_status.required_action.submit_tool_outputs.tool_calls;
-
 
             let fetching = true
             let i =0;
@@ -99,20 +99,33 @@ async function agent(userInput,userName) {
                 const id = toolCall.id;
                 const functionArgs = JSON.parse(toolCall.function.arguments);
                 const functionArgsArr = Object.values(functionArgs);
-                // console.log("toolCalls:",run_status.required_action.submit_tool_outputs.tool_calls)
-                console.log("toolCall:",toolCall)
-                console.log("id:",id)
+                if(debug_level < 1) console.log("toolCall:",toolCall)
+                if(debug_level < 1) console.log("id:",id)
 
                 await eval(`${toolCall.function.name}(${functionArgsArr})`)
                 .then(async (res) => {
-                    console.log("Function result: ",res);
-                    const value = JSON.stringify(res)
+                    if(debug_level < 2) console.log("Function result: ",res);
+                    const value = `${JSON.stringify(res)}`;
                     
-                    tool_outputs = [{ tool_call_id: id, output: value }];
-                    const submit_tool_outputs = await openai.beta.threads.runs.submitToolOutputs(localStorage.getItem('thread_id'), localStorage.getItem('run_id'), {
-                        tool_outputs,
-                    });
-                    console.log("submit_tool_outputs:",submit_tool_outputs.status) 
+                    const tool_outputs_temp = [{ tool_call_id: id, output: value }]; //pass single output
+                    tool_outputs.push({ tool_call_id: id, output: value })
+
+                    //this fails sometimes. It ocasionally chains 2 outputs together, other times it processes the sequentially.
+                    //add a try catch, if the first one fails run the batch attempt
+                    try {
+                        const submit_tool_outputs = await openai.beta.threads.runs.submitToolOutputs(threadID, runID, {
+                            tool_outputs_temp,
+                        });
+                        if(debug_level < 2) console.log(tool_outputs_temp);
+                        if(debug_level < 3) console.log("submit_tool_outputs:",submit_tool_outputs.status) 
+                    } catch (err) {
+                        if(debug_level < 2) console.error(tool_outputs);
+                        const submit_tool_outputs = await openai.beta.threads.runs.submitToolOutputs(threadID, runID, 
+                            {tool_outputs},
+                        );
+                        if(debug_level < 3) console.log("submit_tool_outputs:",submit_tool_outputs.status) 
+                    }
+                    
                     if(i === toolCalls.length-1) {
                         fetching = false;
                     } else {
@@ -121,16 +134,9 @@ async function agent(userInput,userName) {
                 });
             }
 
-    
-            //console.log("tool_outputs final:",tool_outputs)
-            
-            
-            //const toolCall = run_status.required_action.submit_tool_outputs.tool_calls[0];  
-
-    
         } else if(run_status.status === "expired" || run_status.status === "failed"){
             console.log("run stopped: ",run_status.status);
-            localStorage.setItem('run_id', "");
+            localStorage.setItem('run_id', ""); //temp until db added
             return [{text:{value:"Something has gone wrong, can you please ask your question again"}}]
             loading = false;
         } else {
@@ -143,7 +149,8 @@ async function agent(userInput,userName) {
 
 
 const getMessages = async function() {
-    const mes = await openai.beta.threads.messages.list(localStorage.getItem('thread_id'))
+    const threadID = await getThread();
+    const mes = await openai.beta.threads.messages.list(threadID)
     return mes
 }
 export default { agent, getMessages }
