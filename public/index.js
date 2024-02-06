@@ -1,9 +1,15 @@
-const button = document.getElementById("button");
-const output = document.getElementById("output");
+//const button = document.getElementById("button");
+//const output = document.getElementById("output");
+// button.addEventListener("click", () => {
+//     loadMessages()
+// });
 
-button.addEventListener("click", () => {
-output.innerText = "Hello!~";
-});
+const apiURL = "http://localhost:3500/chat";
+
+
+
+
+window.onload = loadMessages();
 
 const msgerForm = get(".msger-inputarea");
 const msgerInput = get(".msger-input");
@@ -20,8 +26,22 @@ const BOT_MSGS = [
 // Icons made by Freepik from www.flaticon.com
 const BOT_IMG = "https://img.icons8.com/?size=77&id=37410&format=png";
 const PERSON_IMG = "https://img.icons8.com/?size=77&id=23261&format=png";
-const BOT_NAME = "BOT";
+const BOT_NAME = "QuakerBot";
 const PERSON_NAME = "Kirk";
+
+function loadMessages() {
+  const UrlToLoad = `${apiURL}`
+    fetch(UrlToLoad)
+      .then(data=>{return data.json()})
+      .then(res=>{
+        console.log(res);
+        appendMessage(res[0].name, res[0].img, "left", res[0].message)
+        //appendMessage(res[1].name, res[0].img, "right", res[1].message)
+        //output.innerText = res.me;
+    });
+
+}
+
 
 msgerForm.addEventListener("submit", event => {
   event.preventDefault();
@@ -32,8 +52,25 @@ msgerForm.addEventListener("submit", event => {
   appendMessage(PERSON_NAME, PERSON_IMG, "right", msgText);
   msgerInput.value = "";
 
-  botResponse();
+  const UrlToLoad = `${apiURL}`
+  fetch(UrlToLoad,{
+    method: "POST",
+    body: JSON.stringify({
+      "name": "Kirk",
+      "message": msgText
+    }),
+    headers: {
+      "Content-type": "application/json; charset=UTF-8"
+    }
+  }) 
+  .then(data=>{return data.json()})
+  .then(res=>{
+      console.log(res);
+      appendMessage(res.name, res.img, "left", res.message);
+  });
+
 });
+
 
 function appendMessage(name, img, side, text) {
   //   Simple solution for small apps
@@ -56,15 +93,6 @@ function appendMessage(name, img, side, text) {
   msgerChat.scrollTop += 500;
 }
 
-function botResponse() {
-  const r = random(0, BOT_MSGS.length - 1);
-  const msgText = BOT_MSGS[r];
-  const delay = msgText.split(" ").length * 100;
-
-  setTimeout(() => {
-    appendMessage(BOT_NAME, BOT_IMG, "left", msgText);
-  }, delay);
-}
 
 // Utils
 function get(selector, root = document) {

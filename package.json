@@ -8,12 +8,16 @@
     "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "http-server ./src/ -o -c-1",
-    "server": "node server.js"
+    "server": "nodemon server.js",
+    "api": "nodemon api.js"
   },
   "author": "Kirk Walker",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "node-localstorage": "^3.0.5",
     "openai": "^4.26.0"
   },
   "devDependencies": {

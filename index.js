@@ -12,17 +12,50 @@ const userInterface = readline.createInterface({
     output: process.stdout
 })
 
+async function getTime() {
+  const d = new Date();
+  let time = d.getTime();
+  return {current_time:d.toLocaleTimeString()}
+}
+
 async function getLocation() {
     const response = await fetch("https://ipapi.co/json/");
     const locationData = await response.json();
-    return locationData;
+    //const res = JSON.stringify(locationData);
+    return { 
+      latitude: locationData.latitude, 
+      longitude:locationData.longitude,
+      city: locationData.city,
+      region: locationData.region,
+      region_code: locationData.region_code,
+      country: locationData.country,
+      country_name: locationData.country_name,
+      country_code: locationData.country_code,
+    };
+    //return locationData;
 }
 
 async function getCurrentWeather(latitude, longitude) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=apparent_temperature`;
   const response = await fetch(url);
   const weatherData = await response.json();
-  return weatherData;
+
+  return {
+    latitude: weatherData.latitude,
+    longitude: weatherData.longitude,
+    generationtime_ms:weatherData.generationtime_ms,
+    utc_offset_seconds:weatherData.utc_offset_seconds,
+    timezone: weatherData.timezone,
+    timezone_abbreviation: weatherData.timezone_abbreviation,
+    elevation:weatherData.elevation,
+    hourly_units: { time: weatherData.hourly_units.time, apparent_temperature: weatherData.hourly_units.apparent_temperature },
+    hourly: {
+      time: [weatherData.hourly.time[4]],
+      apparent_temperature: [weatherData.hourly.apparent_temperature[4]]
+    }
+  }
+
+  //return weatherData;
 }
 
 const tools = [
@@ -56,12 +89,24 @@ const tools = [
       },
     }
   },
+  {
+    type: "function",
+    function: {
+      name: "getTime",
+      description: "Get the current time of day",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    }
+  },
 ];
 
 
 const availableTools = {
   getLocation,
   getCurrentWeather,
+  getTime,
 };
 
 
@@ -70,6 +115,11 @@ let messages = [
     role: "system",
     content:
       "You are a helpful assistant. Only use the functions you have been provided with.",
+  },
+  {
+    role: "user",
+    content:
+      "my name is Kirk",
   },
 ];
 
@@ -80,13 +130,18 @@ userInterface.on("line", async input => {
     const response = await agent(input);
     console.log(response);
 
-    messages = [
-      {
-        role: "system",
-        content:
-          "You are a helpful assistant. Only use the functions you have been provided with.",
-      },
-    ];
+    // messages = [
+    //   {
+    //     role: "system",
+    //     content:
+    //       "You are a helpful assistant. Only use the functions you have been provided with.",
+    //   },
+    //   {
+    //     role: "user",
+    //     content:
+    //       "my name is kirk walker",
+    //   },
+    // ];
     userInterface.prompt();
 })
 
@@ -107,8 +162,10 @@ async function agent(userInput) {
           messages: messages,
           tools: tools,
           });
-
+          
           const { finish_reason, message } = response.choices[0];
+          
+
           if (finish_reason === "tool_calls" && message.tool_calls) {
               const functionName = message.tool_calls[0].function.name;
               const functionToCall = availableTools[functionName];
@@ -125,9 +182,10 @@ async function agent(userInput) {
                       )}
                       `,
               });
-
+              //console.log("functionResponse",functionResponse);
           } else if (finish_reason === "stop") {
               messages.push(message);
+              console.log(messages)
               return message.content;
           }
         } catch (err) {
