@@ -29,12 +29,19 @@ npm install
 ```
 
 You must create a .env file in the root folder and add values for the following:
+```
 API_KEY=ask_kirk
 PORT=3500
 ASSISTANT_ID=ask_kirk
+```
 
-they are currently comming from my account so you'll need to get me to pass them too you.
-
+They are currently comming from my account so you'll need to get me to pass them too you.
+```
+const BOT_IMG = "https://img.icons8.com/?size=77&id=AiI2Vzcqt9Op&format=png";
+const PERSON_IMG = "https://img.icons8.com/?size=77&id=iBnwfeZ6ioYp&format=png";
+const BOT_NAME = "QuakerBot";
+const PERSON_NAME = "Kirk";
+```
 
 With the .env created, run a local instance of the node.js backend:
 ```
