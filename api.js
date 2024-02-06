@@ -10,7 +10,13 @@ import corsOptions from './config/corsOptions.js';
 import errorHandler from './middleware/errorHandler.js';
 import readline from "readline";
 
-//handle local promts
+//change this to update the name chatbot uses to address the user
+const sytem_user = "SystemUser";
+
+//from the env file
+const PORT = process.env.PORT || 3500;
+
+//handle local user interactions
 import OpenAI from './middleware/openai.js';
 const userInterface = readline.createInterface({
     input: process.stdin
@@ -24,12 +30,6 @@ userInterface.on("line", async input => {
     userInterface.prompt();
 })
 
-
-//change this to update the name chatbot uses to address the user
-const sytem_user = "SystemUser";
-
-
-const PORT = process.env.PORT || 3500;
 
 //security middleware
 app.use(cors(corsOptions));
@@ -63,7 +63,3 @@ app.all('*', (req, res) => {
 
 //start the server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-
-
