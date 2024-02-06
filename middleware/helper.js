@@ -4,7 +4,9 @@ import { dirname, extname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const formatDate = function(date) {
+const formatDate = function(indate) {
+    var date = new Date(indate * 1000);
+
     var hours = date.getHours();
     var minutes = date.getMinutes();
     var ampm = hours >= 12 ? 'pm' : 'am';

@@ -9,8 +9,10 @@ const __dirname = dirname(__filename);
 import corsOptions from './config/corsOptions.js';
 import errorHandler from './middleware/errorHandler.js';
 
-import agent from './middleware/openai.js';
+import OpenAI from './middleware/openai.js';
 
+//change this to update the name chatbot uses to address the user
+const sytem_user = "SystemUser";
 
 import readline from "readline";
 const PORT = process.env.PORT || 3500;
@@ -58,20 +60,7 @@ const userInterface = readline.createInterface({
 userInterface.prompt()
 userInterface.on("line", async input => {
     //console.log("input recieved");
-    const response = await agent(input);
+    const response = await OpenAI.agent(input,"SystemUser");
     console.log("Agent response:", response);
-
-    // messages = [
-    //   {
-    //     role: "system",
-    //     content:
-    //       "You are a helpful assistant. Only use the functions you have been provided with.",
-    //   },
-    //   {
-    //     role: "user",
-    //     content:
-    //       "my name is kirk walker",
-    //   },
-    // ];
     userInterface.prompt();
 })
