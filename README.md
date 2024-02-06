@@ -48,7 +48,7 @@ With the .env created, run a local instance of the node.js backend:
 npm run dev
 ```
 
-This starts a local http server you can open at: http://localhost:3500/
+This starts a local http server you can open at: http://localhost:3500/. Additionally you can chat on the same thread in the terminal window without opening a browser window.
 
 ### Troubleshooting
 
