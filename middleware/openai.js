@@ -132,6 +132,7 @@ async function agent(userInput,userName) {
                             console.error('\x1b[31m%s\x1b[0m',"Missmatched tool calls, dropping run");
                             console.error('\x1b[31m%s\x1b[0m',err)
                             await openai.beta.threads.runs.cancel(threadID, runID);
+                            run_status.status = "cancelled"
                             fetching = false;
                         }
                         
