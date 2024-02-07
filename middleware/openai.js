@@ -5,7 +5,7 @@ config();
 import {LocalStorage} from 'node-localstorage' 
 var localStorage = new LocalStorage('./session'); 
 
-const debug_level = 2
+const debug_level = 1
 
 const openai = new OpenAI({
     apiKey: process.env.API_KEY,
@@ -22,8 +22,9 @@ const availableTools = {
     getTime,
 };
 
-const assistant = await openai.beta.assistants.retrieve(process.env.ASSISTANT_ID);
-if(debug_level < 1) console.log(assistant);
+//I dont' think this is needed
+//const assistant = await openai.beta.assistants.retrieve(process.env.ASSISTANT_ID);
+//if(debug_level < 1) console.log(assistant);
 
 async function getThread(){
     if(!localStorage.getItem('thread_id')){
@@ -117,13 +118,23 @@ async function agent(userInput,userName) {
                             tool_outputs_temp,
                         });
                         if(debug_level < 2) console.log(tool_outputs_temp);
-                        if(debug_level < 3) console.log("submit_tool_outputs:",submit_tool_outputs.status) 
+                        if(debug_level < 3) console.log('\x1b[33m%s\x1b[0m',"submit_tool_outputs_temp: "+submit_tool_outputs.status) 
                     } catch (err) {
                         if(debug_level < 2) console.error(tool_outputs);
-                        const submit_tool_outputs = await openai.beta.threads.runs.submitToolOutputs(threadID, runID, 
-                            {tool_outputs},
-                        );
-                        if(debug_level < 3) console.log("submit_tool_outputs:",submit_tool_outputs.status) 
+
+                        //if this breaks we need to kill the run and get the user to ask again
+                        try{
+                            const submit_tool_outputs = await openai.beta.threads.runs.submitToolOutputs(threadID, runID, 
+                                {tool_outputs},
+                            );
+                            if(debug_level < 3) console.log('\x1b[33m%s\x1b[0m',"submit_tool_outputs: "+submit_tool_outputs.status) 
+                        } catch(err) {
+                            console.error('\x1b[31m%s\x1b[0m',"Missmatched tool calls, dropping run");
+                            console.error('\x1b[31m%s\x1b[0m',err)
+                            await openai.beta.threads.runs.cancel(threadID, runID);
+                            fetching = false;
+                        }
+                        
                     }
                     
                     if(i === toolCalls.length-1) {
@@ -134,13 +145,12 @@ async function agent(userInput,userName) {
                 });
             }
 
-        } else if(run_status.status === "expired" || run_status.status === "failed"){
-            console.log("run stopped: ",run_status.status);
+        } else if(run_status.status === "expired" || run_status.status === "failed" || run_status.status === "cancelled"){
+            console.error("run stopped: ",run_status.status);
             localStorage.setItem('run_id', ""); //temp until db added
             return [{text:{value:"Something has gone wrong, can you please ask your question again"}}]
-            loading = false;
         } else {
-            console.log("Waiting for the Assistant to process...",run_status.status);
+            console.log('\x1b[33m%s\x1b[0m',"Waiting for the Assistant to process... "+run_status.status);
         }
     
     }

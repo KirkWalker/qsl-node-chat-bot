@@ -33,7 +33,7 @@ const getAllMessages = async (req,res) => {
     });
 
     if(final.length <1) {
-        if(debug_level < 2) console.log("Starting new thread");
+        if(debug_level < 2) console.log('\x1b[36m%s\x1b[0m',"Starting new thread");
         final.push(await getStartingMessage());
     }
    
@@ -44,7 +44,7 @@ const createNewMessage = async (req, res) => {
     if(debug_level < 2) console.log("createNewMessage",req.body);
     try {
         const response = await OpenAI.agent(req.body.message,req.body.name);
-        if(debug_level < 2) console.log("createNewMessage response:",response);
+        if(debug_level < 2) console.log('\x1b[36m%s\x1b[0m',`createNewMessage response:${response[0].text.value}`);
         res.status(201).json({
             "role":"agent",
             "message":response[0].text.value});
