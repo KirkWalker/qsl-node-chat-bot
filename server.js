@@ -9,6 +9,12 @@ const __dirname = dirname(__filename);
 import corsOptions from './config/corsOptions.js';
 import errorHandler from './middleware/errorHandler.js';
 import readline from "readline";
+import verifyJWT  from './middleware/verfiyJWT.js';
+import credentials  from './middleware/credentials.js';
+import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
+import connectDB from './config/dbConn.js';
+connectDB();
 
 //change this to update the name chatbot uses to address the user
 const sytem_user = "SystemUser";
@@ -31,9 +37,14 @@ userInterface.on("line", async input => {
 })
 
 
+
 //security middleware
+app.use(credentials)
 app.use(cors(corsOptions));
 app.use(errorHandler);
+
+//middleware for cookies
+app.use(cookieParser());
 
 // built-in middleware to handle urlencoded data
 // in other words, form data: ‘content-type: application/x-www-form-urlencoded’
@@ -45,8 +56,23 @@ app.use(express.json());
 //serve static files
 app.use(express.static(join(__dirname, '/public')));
 
+import regrouter from './routes/register.js'
+app.use('/register', regrouter);
+
+import authrouter from './routes/auth.js'
+app.use('/auth', authrouter);
+
+import refreshrouter from './routes/refresh.js'
+app.use('/refresh', refreshrouter);
+
+import logoutrouter from './routes/logout.js'
+app.use('/logout', logoutrouter);
+
+//all routes blow this stement will require a token
+app.use(verifyJWT);
+
 //serve api requests
-import chatrouter from './routes/chat.js'
+import chatrouter from './routes/api.js'
 app.use('/chat', chatrouter);
 
 //handle 404 requests
@@ -61,5 +87,9 @@ app.all('*', (req, res) => {
     }
 });
 
-//start the server
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+mongoose.connection.once('open', () => {
+    if (process.env.NODE_ENV === 'dev' || !process.env.NODE_ENV) {
+        console.log("connected to mongo DB");
+        app.listen(PORT, () => { console.log(`Server running on port ${PORT}`) });
+    }
+});
